@@ -8,7 +8,7 @@ FROM ghcr.io/gabe565/moreutils:0.6.1@sha256:ae74fb352762709efdb79a67d1b51ab78d6f
 FROM $RESTIC_IMAGE:$RESTIC_TAG AS restic
 RUN test -f /usr/bin/restic
 
-RUN apk add --no-cache postgresql-client mariadb-client mongodb-tools sqlite
+RUN apk add --no-cache bash postgresql-client mariadb-client mongodb-tools sqlite
 
 COPY --from=runitor /usr/local/bin/runitor /usr/bin/runitor
 COPY --from=moreutils /usr/bin/ts /usr/bin/ts
