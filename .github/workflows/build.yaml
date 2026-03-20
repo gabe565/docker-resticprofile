@@ -8,7 +8,8 @@ concurrency:
 
 env:
   RESTIC_IMAGE: restic/restic
-  RESTIC_TAG: 0.18.1@sha256:39d9072fb5651c80d75c7a811612eb60b4c06b32ffe87c2e9f3c7222e1797e76
+  RESTIC_TAG: 0.18.1
+  RESTIC_DIGEST: sha256:39d9072fb5651c80d75c7a811612eb60b4c06b32ffe87c2e9f3c7222e1797e76
 
 jobs:
   build:
@@ -58,6 +59,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            RESTIC_TAG=${{ env.RESTIC_TAG }}
+            RESTIC_TAG=${{ env.RESTIC_TAG }}@${{ env.RESTIC_DIGEST }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
