@@ -6,8 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
+
+	"gabe565.com/utils/termx"
 )
 
 func main() {
@@ -62,13 +65,17 @@ outer:
 		}
 	}
 
+	finalArgs := slices.Grow(slices.Clone(args[:sepIndex]), 3)
+
 	switch cmd {
-	case "backup", "forget", "snapshots":
+	case "forget":
+		if !termx.IsTerminal(os.Stdout) {
+			finalArgs = append(finalArgs, "--compact")
+		}
+	case "backup", "snapshots":
 	default:
 		return execRestic(args)
 	}
-
-	finalArgs := slices.Grow(slices.Clone(args[:sepIndex]), 2)
 
 	if !hasGroupBy {
 		if groupBy := os.Getenv("RESTIC_GROUP_BY"); groupBy != "" {
