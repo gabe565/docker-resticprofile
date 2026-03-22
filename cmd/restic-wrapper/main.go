@@ -21,7 +21,7 @@ func run(args []string) error {
 	var hasGroupBy, hasStdinFromCommand, hasStdinFilename bool
 	stdinName := os.Getenv("RESTIC_HOST")
 	var cmd, stdinExt string
-	var sepIndex int
+	sepIndex := len(args)
 
 outer:
 	for i, arg := range args {
