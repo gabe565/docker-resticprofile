@@ -7,4 +7,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 )
 
+require github.com/urfave/cli/v3 v3.8.0
+
 require golang.org/x/sys v0.26.0 // indirect
