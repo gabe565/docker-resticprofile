@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"os"
 
 	"github.com/gabe565/docker-restic/internal/dumpdb"
 	"github.com/urfave/cli/v3"
@@ -27,8 +28,14 @@ func New() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
+			path := cmd.StringArg(ArgFile)
+
+			if _, err := os.Stat(path); err != nil {
+				return err
+			}
+
 			return dumpdb.RunCmd(ctx, cmd, nil,
-				"sqlite3", "-bail", cmd.StringArg(ArgFile), ".dump",
+				"sqlite3", "-bail", path, ".dump",
 			)
 		},
 	}
