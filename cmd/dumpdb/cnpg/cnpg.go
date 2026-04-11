@@ -1,79 +1,38 @@
 package cnpg
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 
-	"github.com/gabe565/docker-restic/internal/clix"
+	"github.com/gabe565/docker-restic/internal/cobrax"
 	"github.com/gabe565/docker-restic/internal/dumpdb"
-	"github.com/urfave/cli/v3"
+	"github.com/spf13/cobra"
 )
 
-func New() *cli.Command {
-	var mount string
-	return &cli.Command{
-		Name:  "cnpg",
-		Usage: "Dump a CloudNativePG database",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:        "secret-mount",
-				Usage:       "Directory where secrets are mounted",
-				Value:       "/postgresql-app",
-				Destination: &mount,
-			},
-			&cli.StringFlag{
-				Name:     dumpdb.FlagHost,
-				Usage:    "Database host",
-				Aliases:  []string{"h"},
-				Required: true,
-				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_HOST"), clix.SecretFile(&mount, "host")),
-			},
-			&cli.StringFlag{
-				Name:     dumpdb.FlagDatabase,
-				Usage:    "Database name",
-				Aliases:  []string{"d"},
-				Required: true,
-				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_DATABASE"), clix.SecretFile(&mount, "dbname")),
-			},
-			&cli.StringFlag{
-				Name:     dumpdb.FlagUsername,
-				Usage:    "Database user",
-				Aliases:  []string{"u"},
-				Required: true,
-				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_USERNAME"), clix.SecretFile(&mount, "username")),
-			},
-			&cli.StringFlag{
-				Name:     dumpdb.FlagPassword,
-				Usage:    "Database password",
-				Aliases:  []string{"p"},
-				Required: true,
-				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_PASSWORD"), clix.SecretFile(&mount, "password")),
-			},
-			&cli.StringFlag{
-				Name:    "restrict-key",
-				Usage:   "pg_dump restrict key",
-				Sources: cli.NewValueSourceChain(cli.EnvVar("PG_RESTRICT_KEY")),
-			},
-			&cli.BoolFlag{
-				Name:    dumpdb.FlagDryRun,
-				Usage:   "Dry run",
-				Sources: cli.EnvVars("DB_DRY_RUN"),
-			},
-		},
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			host := cmd.String(dumpdb.FlagHost)
-			database := cmd.String(dumpdb.FlagDatabase)
-			username := cmd.String(dumpdb.FlagUsername)
-			password := cmd.String(dumpdb.FlagPassword)
+func New() *cobra.Command {
+	var mount, host, database, username, password, restrictKey string
+	var dryRun bool
 
-			restrictKey := cmd.String("restrict-key")
+	fs := &cobrax.Flags{}
+	cmd := &cobra.Command{
+		Use:   "cnpg",
+		Short: "Dump a CloudNativePG database",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := fs.Resolve(); err != nil {
+				return err
+			}
+
 			if restrictKey == "" {
 				sum := sha256.Sum256([]byte(host + database + username + password + "\n"))
 				restrictKey = hex.EncodeToString(sum[:])
 			}
 
-			return dumpdb.RunCmd(ctx, cmd, &dumpdb.RunOpts{Envs: []string{"PGPASSWORD=" + password}},
+			return dumpdb.RunCmd(
+				cmd,
+				&dumpdb.RunOpts{
+					Envs:   []string{"PGPASSWORD=" + password},
+					DryRun: dryRun,
+				},
 				"pg_dump",
 				"--clean",
 				"--if-exists",
@@ -85,4 +44,21 @@ func New() *cli.Command {
 			)
 		},
 	}
+
+	fs.FlagSet = cmd.Flags()
+	fs.String(&mount, "secret-mount", "", "/postgresql-app", "Directory where secrets are mounted")
+	fs.String(&host, dumpdb.FlagHost, "H", "", "Database host",
+		cobrax.Env("DB_HOST"), cobrax.SecretFile(&mount, "host"))
+	fs.String(&database, dumpdb.FlagDatabase, "d", "", "Database name",
+		cobrax.Env("DB_DATABASE"), cobrax.SecretFile(&mount, "dbname"))
+	fs.String(&username, dumpdb.FlagUsername, "u", "", "Database user",
+		cobrax.Env("DB_USERNAME"), cobrax.SecretFile(&mount, "username"))
+	fs.String(&password, dumpdb.FlagPassword, "p", "", "Database password",
+		cobrax.Env("DB_PASSWORD"), cobrax.SecretFile(&mount, "password"))
+	fs.String(&restrictKey, "restrict-key", "", "", "pg_dump restrict key",
+		cobrax.Env("PG_RESTRICT_KEY"))
+	fs.Bool(&dryRun, dumpdb.FlagDryRun, "", false, "Dry run",
+		cobrax.Env("DB_DRY_RUN"))
+
+	return cmd
 }

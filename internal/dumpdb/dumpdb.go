@@ -1,14 +1,13 @@
 package dumpdb
 
 import (
-	"context"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/gabe565/docker-restic/internal/xtrace"
-	"github.com/urfave/cli/v3"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -22,26 +21,27 @@ const (
 type RunOpts struct {
 	Envs   []string
 	Redact []string
+	DryRun bool
 }
 
-func RunCmd(ctx context.Context, cmd *cli.Command, opts *RunOpts, name string, args ...string) error {
+func RunCmd(cmd *cobra.Command, opts *RunOpts, name string, args ...string) error {
 	if opts == nil {
 		opts = &RunOpts{}
 	}
 
-	e := exec.CommandContext(ctx, name, args...)
+	e := exec.CommandContext(cmd.Context(), name, args...)
 	e.Env = append(os.Environ(), opts.Envs...)
-	e.Stdin = cmd.Reader
-	e.Stdout = cmd.Writer
-	e.Stderr = cmd.ErrWriter
+	e.Stdin = cmd.InOrStdin()
+	e.Stdout = cmd.OutOrStdout()
+	e.Stderr = cmd.ErrOrStderr()
 
 	xtrace := xtrace.XTraceString(e.Args)
 	for _, v := range opts.Redact {
 		xtrace = strings.ReplaceAll(xtrace, v, "***")
 	}
-	_, _ = io.WriteString(cmd.ErrWriter, xtrace)
+	_, _ = io.WriteString(e.Stderr, xtrace)
 
-	if cmd.Bool(FlagDryRun) {
+	if opts.DryRun {
 		return nil
 	}
 

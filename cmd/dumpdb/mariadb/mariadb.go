@@ -1,66 +1,30 @@
 package mariadb
 
 import (
-	"context"
-
-	"github.com/gabe565/docker-restic/internal/clix"
+	"github.com/gabe565/docker-restic/internal/cobrax"
 	"github.com/gabe565/docker-restic/internal/dumpdb"
-	"github.com/urfave/cli/v3"
+	"github.com/spf13/cobra"
 )
 
-func New() *cli.Command {
-	var mount string
-	return &cli.Command{
-		Name:  "mariadb",
-		Usage: "Dump a MariaDB database",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:        "secret-mount",
-				Usage:       "Directory where secrets are mounted",
-				Value:       "/mariadb",
-				Destination: &mount,
-			},
-			&cli.StringFlag{
-				Name:     dumpdb.FlagHost,
-				Usage:    "Database host",
-				Aliases:  []string{"h"},
-				Required: true,
-				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_HOST")),
-			},
-			&cli.StringFlag{
-				Name:     dumpdb.FlagDatabase,
-				Usage:    "Database name",
-				Aliases:  []string{"d"},
-				Required: true,
-				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_DATABASE")),
-			},
-			&cli.StringFlag{
-				Name:     dumpdb.FlagUsername,
-				Usage:    "Database user",
-				Aliases:  []string{"u"},
-				Required: true,
-				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_USERNAME")),
-			},
-			&cli.StringFlag{
-				Name:     dumpdb.FlagPassword,
-				Usage:    "Database password",
-				Aliases:  []string{"p"},
-				Required: true,
-				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_PASSWORD"), clix.SecretFile(&mount, "mariadb-password")),
-			},
-			&cli.BoolFlag{
-				Name:    dumpdb.FlagDryRun,
-				Usage:   "Dry run",
-				Sources: cli.EnvVars("DB_DRY_RUN"),
-			},
-		},
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			host := cmd.String(dumpdb.FlagHost)
-			database := cmd.String(dumpdb.FlagDatabase)
-			username := cmd.String(dumpdb.FlagUsername)
-			password := cmd.String(dumpdb.FlagPassword)
+func New() *cobra.Command {
+	var mount, host, database, username, password string
+	var dryRun bool
 
-			return dumpdb.RunCmd(ctx, cmd, &dumpdb.RunOpts{Envs: []string{"MYSQL_PWD=" + password}},
+	fs := &cobrax.Flags{}
+	cmd := &cobra.Command{
+		Use:   "mariadb",
+		Short: "Dump a MariaDB database",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := fs.Resolve(); err != nil {
+				return err
+			}
+
+			return dumpdb.RunCmd(
+				cmd,
+				&dumpdb.RunOpts{
+					Envs:   []string{"MYSQL_PWD=" + password},
+					DryRun: dryRun,
+				},
 				"mariadb-dump",
 				"--add-drop-table",
 				"--skip-dump-date",
@@ -71,4 +35,19 @@ func New() *cli.Command {
 			)
 		},
 	}
+
+	fs.FlagSet = cmd.Flags()
+	fs.String(&mount, "secret-mount", "", "/mariadb", "Directory where secrets are mounted")
+	fs.String(&host, dumpdb.FlagHost, "H", "", "Database host",
+		cobrax.Env("DB_HOST"))
+	fs.String(&database, dumpdb.FlagDatabase, "d", "", "Database name",
+		cobrax.Env("DB_DATABASE"))
+	fs.String(&username, dumpdb.FlagUsername, "u", "", "Database user",
+		cobrax.Env("DB_USERNAME"))
+	fs.String(&password, dumpdb.FlagPassword, "p", "", "Database password",
+		cobrax.Env("DB_PASSWORD"), cobrax.SecretFile(&mount, "mariadb-password"))
+	fs.Bool(&dryRun, dumpdb.FlagDryRun, "", false, "Dry run",
+		cobrax.Env("DB_DRY_RUN"))
+
+	return cmd
 }

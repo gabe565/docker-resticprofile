@@ -1,42 +1,42 @@
 package sqlite
 
 import (
-	"context"
 	"os"
 
+	"github.com/gabe565/docker-restic/internal/cobrax"
 	"github.com/gabe565/docker-restic/internal/dumpdb"
-	"github.com/urfave/cli/v3"
+	"github.com/spf13/cobra"
 )
 
-const ArgFile = "file"
+func New() *cobra.Command {
+	var dryRun bool
 
-func New() *cli.Command {
-	return &cli.Command{
-		Name:  "sqlite",
-		Usage: "Dump a SQLite database",
-		Arguments: []cli.Argument{
-			&cli.StringArg{
-				Name:      ArgFile,
-				UsageText: "SQLite database file",
-			},
-		},
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    dumpdb.FlagDryRun,
-				Usage:   "Dry run",
-				Sources: cli.EnvVars("DB_DRY_RUN"),
-			},
-		},
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			path := cmd.StringArg(ArgFile)
+	fs := &cobrax.Flags{}
+	cmd := &cobra.Command{
+		Use:   "sqlite file",
+		Short: "Dump a SQLite database",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := fs.Resolve(); err != nil {
+				return err
+			}
+
+			path := args[0]
 
 			if _, err := os.Stat(path); err != nil {
 				return err
 			}
 
-			return dumpdb.RunCmd(ctx, cmd, nil,
+			return dumpdb.RunCmd(
+				cmd, &dumpdb.RunOpts{DryRun: dryRun},
 				"sqlite3", "-bail", path, ".dump",
 			)
 		},
 	}
+
+	fs.FlagSet = cmd.Flags()
+	fs.Bool(&dryRun, dumpdb.FlagDryRun, "", false, "Dry run",
+		cobrax.Env("DB_DRY_RUN"))
+
+	return cmd
 }
