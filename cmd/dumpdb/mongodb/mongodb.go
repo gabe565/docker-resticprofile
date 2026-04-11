@@ -2,9 +2,9 @@ package mongodb
 
 import (
 	"context"
-	"os/exec"
 
 	"github.com/gabe565/docker-restic/internal/clix"
+	"github.com/gabe565/docker-restic/internal/dumpdb"
 	"github.com/urfave/cli/v3"
 )
 
@@ -21,28 +21,28 @@ func New() *cli.Command {
 				Destination: &mount,
 			},
 			&cli.StringFlag{
-				Name:     "host",
+				Name:     dumpdb.FlagHost,
 				Usage:    "Database host",
 				Aliases:  []string{"h"},
 				Required: true,
 				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_HOST")),
 			},
 			&cli.StringFlag{
-				Name:     "database",
+				Name:     dumpdb.FlagDatabase,
 				Usage:    "Database name",
 				Aliases:  []string{"d"},
 				Required: true,
 				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_DATABASE")),
 			},
 			&cli.StringFlag{
-				Name:     "username",
+				Name:     dumpdb.FlagUsername,
 				Usage:    "Database user",
 				Aliases:  []string{"u"},
 				Required: true,
 				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_USERNAME")),
 			},
 			&cli.StringFlag{
-				Name:     "password",
+				Name:     dumpdb.FlagPassword,
 				Usage:    "Database password",
 				Aliases:  []string{"p"},
 				Required: true,
@@ -54,32 +54,27 @@ func New() *cli.Command {
 				Sources: cli.NewValueSourceChain(cli.EnvVar("AUTHENTICATION_DB")),
 			},
 			&cli.BoolFlag{
-				Name:    "dry-run",
+				Name:    dumpdb.FlagDryRun,
 				Usage:   "Dry run",
 				Sources: cli.EnvVars("DB_DRY_RUN"),
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			host := cmd.String("host")
-			database := cmd.String("database")
-			username := cmd.String("username")
-			password := cmd.String("password")
+			host := cmd.String(dumpdb.FlagHost)
+			database := cmd.String(dumpdb.FlagDatabase)
+			username := cmd.String(dumpdb.FlagUsername)
+			password := cmd.String(dumpdb.FlagPassword)
 			authDB := cmd.String("authentication-db")
 
-			e := exec.CommandContext(ctx, "mongodump",
-				"--archive", "--authenticationDatabase="+authDB,
-				"--host="+host, "--username="+username, "--db="+database,
+			return dumpdb.RunCmd(ctx, cmd, &dumpdb.RunOpts{Redact: []string{password}},
+				"mongodump",
+				"--archive",
+				"--authenticationDatabase="+authDB,
+				"--host="+host,
+				"--username="+username,
+				"--password="+password,
+				"--db="+database,
 			)
-			e.Stdin = cmd.Reader
-			e.Stdout = cmd.Writer
-			e.Stderr = cmd.ErrWriter
-			clix.XTrace(cmd.ErrWriter, append(e.Args, "--password=***"))
-			e.Args = append(e.Args, "--password="+password)
-
-			if cmd.Bool("dry-run") {
-				return nil
-			}
-			return e.Run()
 		},
 	}
 }

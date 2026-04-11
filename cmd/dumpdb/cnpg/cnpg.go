@@ -4,10 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"os"
-	"os/exec"
 
 	"github.com/gabe565/docker-restic/internal/clix"
+	"github.com/gabe565/docker-restic/internal/dumpdb"
 	"github.com/urfave/cli/v3"
 )
 
@@ -24,28 +23,28 @@ func New() *cli.Command {
 				Destination: &mount,
 			},
 			&cli.StringFlag{
-				Name:     "host",
+				Name:     dumpdb.FlagHost,
 				Usage:    "Database host",
 				Aliases:  []string{"h"},
 				Required: true,
 				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_HOST"), clix.SecretFile(&mount, "host")),
 			},
 			&cli.StringFlag{
-				Name:     "database",
+				Name:     dumpdb.FlagDatabase,
 				Usage:    "Database name",
 				Aliases:  []string{"d"},
 				Required: true,
 				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_DATABASE"), clix.SecretFile(&mount, "dbname")),
 			},
 			&cli.StringFlag{
-				Name:     "username",
+				Name:     dumpdb.FlagUsername,
 				Usage:    "Database user",
 				Aliases:  []string{"u"},
 				Required: true,
 				Sources:  cli.NewValueSourceChain(cli.EnvVar("DB_USERNAME"), clix.SecretFile(&mount, "username")),
 			},
 			&cli.StringFlag{
-				Name:     "password",
+				Name:     dumpdb.FlagPassword,
 				Usage:    "Database password",
 				Aliases:  []string{"p"},
 				Required: true,
@@ -57,16 +56,16 @@ func New() *cli.Command {
 				Sources: cli.NewValueSourceChain(cli.EnvVar("PG_RESTRICT_KEY")),
 			},
 			&cli.BoolFlag{
-				Name:    "dry-run",
+				Name:    dumpdb.FlagDryRun,
 				Usage:   "Dry run",
 				Sources: cli.EnvVars("DB_DRY_RUN"),
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			host := cmd.String("host")
-			database := cmd.String("database")
-			username := cmd.String("username")
-			password := cmd.String("password")
+			host := cmd.String(dumpdb.FlagHost)
+			database := cmd.String(dumpdb.FlagDatabase)
+			username := cmd.String(dumpdb.FlagUsername)
+			password := cmd.String(dumpdb.FlagPassword)
 
 			restrictKey := cmd.String("restrict-key")
 			if restrictKey == "" {
@@ -74,20 +73,16 @@ func New() *cli.Command {
 				restrictKey = hex.EncodeToString(sum[:])
 			}
 
-			e := exec.CommandContext(ctx, "pg_dump",
-				"--clean", "--if-exists", "--no-owner", "--restrict-key="+restrictKey,
-				"--host="+host, "--username="+username, "--dbname="+database,
+			return dumpdb.RunCmd(ctx, cmd, &dumpdb.RunOpts{Envs: []string{"PGPASSWORD=" + password}},
+				"pg_dump",
+				"--clean",
+				"--if-exists",
+				"--no-owner",
+				"--restrict-key="+restrictKey,
+				"--host="+host,
+				"--username="+username,
+				"--dbname="+database,
 			)
-			e.Env = append(os.Environ(), "PGPASSWORD="+password)
-			e.Stdin = cmd.Reader
-			e.Stdout = cmd.Writer
-			e.Stderr = cmd.ErrWriter
-			clix.XTrace(cmd.ErrWriter, e.Args)
-
-			if cmd.Bool("dry-run") {
-				return nil
-			}
-			return e.Run()
 		},
 	}
 }
