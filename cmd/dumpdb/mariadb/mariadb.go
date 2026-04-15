@@ -19,20 +19,19 @@ func New() *cobra.Command {
 				return err
 			}
 
-			return dumpdb.RunCmd(
-				cmd,
-				&dumpdb.RunOpts{
-					Envs:   []string{"MYSQL_PWD=" + password},
-					DryRun: dryRun,
-				},
-				"mariadb-dump",
+			args = append([]string{
 				"--add-drop-table",
 				"--skip-dump-date",
 				"--single-transaction",
-				"--host="+host,
-				"--user="+username,
+				"--host=" + host,
+				"--user=" + username,
 				database,
-			)
+			}, args...)
+
+			return dumpdb.RunCmd(cmd, "mariadb-dump", args, &dumpdb.RunOpts{
+				Envs:   []string{"MYSQL_PWD=" + password},
+				DryRun: dryRun,
+			})
 		},
 	}
 

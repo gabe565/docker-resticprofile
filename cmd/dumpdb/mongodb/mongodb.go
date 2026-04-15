@@ -19,20 +19,19 @@ func New() *cobra.Command {
 				return err
 			}
 
-			return dumpdb.RunCmd(
-				cmd,
-				&dumpdb.RunOpts{
-					Redact: []string{password},
-					DryRun: dryRun,
-				},
-				"mongodump",
+			args = append([]string{
 				"--archive",
-				"--authenticationDatabase="+authDB,
-				"--host="+host,
-				"--username="+username,
-				"--password="+password,
-				"--db="+database,
-			)
+				"--authenticationDatabase=" + authDB,
+				"--host=" + host,
+				"--username=" + username,
+				"--password=" + password,
+				"--db=" + database,
+			}, args...)
+
+			return dumpdb.RunCmd(cmd, "mongodump", args, &dumpdb.RunOpts{
+				Redact: []string{password},
+				DryRun: dryRun,
+			})
 		},
 	}
 

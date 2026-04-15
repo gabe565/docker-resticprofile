@@ -22,15 +22,21 @@ func New() *cobra.Command {
 			}
 
 			path := args[0]
+			args = args[1:]
 
 			if _, err := os.Stat(path); err != nil {
 				return err
 			}
 
-			return dumpdb.RunCmd(
-				cmd, &dumpdb.RunOpts{DryRun: dryRun},
-				"sqlite3", "-bail", path, ".dump",
-			)
+			args = append([]string{
+				"-bail",
+				path,
+				".dump",
+			}, args...)
+
+			return dumpdb.RunCmd(cmd, "sqlite3", args, &dumpdb.RunOpts{
+				DryRun: dryRun,
+			})
 		},
 	}
 

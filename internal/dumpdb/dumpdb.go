@@ -24,7 +24,7 @@ type RunOpts struct {
 	DryRun bool
 }
 
-func RunCmd(cmd *cobra.Command, opts *RunOpts, name string, args ...string) error {
+func RunCmd(cmd *cobra.Command, name string, args []string, opts *RunOpts) error {
 	if opts == nil {
 		opts = &RunOpts{}
 	}

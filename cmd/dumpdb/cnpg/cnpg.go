@@ -27,21 +27,20 @@ func New() *cobra.Command {
 				restrictKey = hex.EncodeToString(sum[:])
 			}
 
-			return dumpdb.RunCmd(
-				cmd,
-				&dumpdb.RunOpts{
-					Envs:   []string{"PGPASSWORD=" + password},
-					DryRun: dryRun,
-				},
-				"pg_dump",
+			args = append([]string{
 				"--clean",
 				"--if-exists",
 				"--no-owner",
-				"--restrict-key="+restrictKey,
-				"--host="+host,
-				"--username="+username,
-				"--dbname="+database,
-			)
+				"--restrict-key=" + restrictKey,
+				"--host=" + host,
+				"--username=" + username,
+				"--dbname=" + database,
+			}, args...)
+
+			return dumpdb.RunCmd(cmd, "pg_dump", args, &dumpdb.RunOpts{
+				Envs:   []string{"PGPASSWORD=" + password},
+				DryRun: dryRun,
+			})
 		},
 	}
 
