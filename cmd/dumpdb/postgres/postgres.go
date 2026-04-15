@@ -1,4 +1,4 @@
-package cnpg
+package postgres
 
 import (
 	"crypto/sha256"
@@ -15,8 +15,9 @@ func New() *cobra.Command {
 
 	fs := &cobrax.Flags{}
 	cmd := &cobra.Command{
-		Use:   "cnpg",
-		Short: "Dump a CloudNativePG database",
+		Use:     "postgres",
+		Aliases: []string{"cnpg"},
+		Short:   "Dump a Postgres database",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := fs.Resolve(); err != nil {
 				return err

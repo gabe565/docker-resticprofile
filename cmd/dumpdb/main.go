@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/gabe565/docker-restic/cmd/dumpdb/cnpg"
 	"github.com/gabe565/docker-restic/cmd/dumpdb/mariadb"
 	"github.com/gabe565/docker-restic/cmd/dumpdb/mongodb"
+	"github.com/gabe565/docker-restic/cmd/dumpdb/postgres"
 	"github.com/gabe565/docker-restic/cmd/dumpdb/sqlite"
 	"github.com/spf13/cobra"
 )
@@ -18,9 +18,9 @@ func New() *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		cnpg.New(),
 		mariadb.New(),
 		mongodb.New(),
+		postgres.New(),
 		sqlite.New(),
 	)
 
